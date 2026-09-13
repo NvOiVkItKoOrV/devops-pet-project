@@ -1,0 +1,21 @@
+---
+- name: Join worker nodes to kubernetes cluster
+  hosts: workers
+  become: true
+  vars:
+    join_command_file: "{{ playbook_dir }}/../join-command.sh"
+  tasks:
+    - name: check if node already joined
+      stat:
+        path: /etc/kubernetes/kubelet.conf
+      register: kubelet_conf_check
+
+    - name: Run kubeadm join
+      command: "{{ lookup('file', join_command_file) }}"
+      when: not kubelet_conf_check.stat.exists
+      register: join_result
+
+    - name: Show join output
+      debug:
+        var: join_result.stdout_lines
+      when: join_result is changed

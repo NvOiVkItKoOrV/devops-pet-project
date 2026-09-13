@@ -1,0 +1,81 @@
+---
+- name: Preparation nodes for Kubernetes
+  hosts: k8s_cluster
+  become: true
+  tasks:
+
+    - name: Disable swap
+      command: swapoff -a
+      when: ansible_swaptotal_mb > 0
+      changed_when: true
+
+    - name: Comment swap in fstab forever
+      replace:
+        path: /etc/fstab
+        regexp: '^([^#].*\sswap\s.*)$'
+        replace: '#\1'
+
+    - name: Download kernel modules
+      modprobe:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - overlay
+        - br_netfilter
+
+    - name: Set sysctl parameters
+      sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        sysctl_set: true
+        reload: true
+      loop:
+        - { key: "net.bridge.bridge-nf-call-iptables", value: "1" }
+        - { key: "net.ipv4.ip_forward", value: "1" }
+
+    - name: Put containerd
+      apt:
+        name: containerd
+        state: present
+        update_cache: true
+
+    - name: Install conntrack
+      apt: 
+        name: conntrack
+        state: present
+
+    - name: Generate default config
+      command: containerd config default
+      register: containerd_default_config
+      changed_when: false
+
+    - name: Ensure containerdconfig dir exists
+      file: 
+        path: /etc/containerd
+        state: directory
+        mode: '0755'
+
+    - name: Write config
+      copy:
+        content: "{{ containerd_default_config.stdout }}"
+        dest: /etc/containerd/config.toml
+      notify: Restart containerd
+
+    - name: Set SystemdCgroup to true
+      replace:
+        path: /etc/containerd/config.toml
+        regexp: 'SystemdCgroup = false'
+        replace: 'SystemdCgroup = true'
+      notify: Restart containerd
+
+    - name: Check containerd started
+      service:
+        name: containerd
+        state: started
+        enabled: true
+
+  handlers: 
+    - name: Restart containerd
+      service:
+        name: containerd
+        state: restarted

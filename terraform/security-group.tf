@@ -34,6 +34,12 @@ resource "yandex_vpc_security_group" "main" {
     v4_cidr_blocks = ["0.0.0.0/0"]
   }
   ingress {
+    protocol       = "TCP"
+    from_port      = 30000
+    to_port        = 32767
+    v4_cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
     protocol       = "ANY"
     v4_cidr_blocks = ["10.10.0.0/24"]
   }

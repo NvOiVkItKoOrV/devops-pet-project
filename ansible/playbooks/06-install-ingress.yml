@@ -1,0 +1,21 @@
+---
+- name: Install ingress-nginx
+  hosts: master
+  become: false
+  environment:
+    KUBECONFIG: /home/ubuntu/.kube/config
+  vars:
+    ingress_manifest_url: "https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.2/deploy/static/provider/baremetal/deploy.yaml"
+  tasks:
+    - name: Apply ingress-nginx manifest
+      command: kubectl apply -f {{ ingress_manifest_url }}
+      register: ingress_apply_result
+      changed_when: "'created' in ingress_apply_result.stdout or 'configured' in ingress_apply_result.stdout"
+
+    - name: Wait for ingress-nginx controller pod to be ready
+      command: >
+        kubectl wait --namespace ingress-nginx
+        --for=condition=ready pod
+        --selector=app.kubernetes.io/component=controller
+        --timeout=120s
+      changed_when: false

@@ -1,0 +1,16 @@
+---
+- name: Install calico CNI
+  hosts: master
+  become: false
+  vars:
+    calico_manifest_url: "https://raw.githubusercontent.com/projectcalico/calico/v3.28.0/manifests/calico.yaml"
+  tasks:
+    - name: Check if calico already installed
+      command: kubectl get daemonset calico-node -n kube-system
+      register: calico_check
+      failed_when: false
+      changed_when: false
+
+    - name: Apply calico manifest
+      command: kubectl create -f {{ calico_manifest_url }}
+      when: calico_check.rc != 0

@@ -2,3 +2,4 @@ terraform/authorized_key.json
 terraform/.terraform/
 terraform/*.tfstate
 terraform/*.tfstate.backup
+ansible/join-command.sh
